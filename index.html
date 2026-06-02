@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Math Worksheet Generator</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 20px;
+      }
+      h1 {
+        text-align: center;
+      }
+      .builder-layout {
+        display: grid;
+        gap: 32px;
+        grid-template-columns: minmax(0, 1fr) minmax(260px, 0.85fr);
+        margin: 0 auto;
+        max-width: 900px;
+      }
+      .custom-panel {
+        padding-right: 8px;
+      }
+      .mastery-panel {
+        border-left: 1px solid #777777;
+        padding-left: 32px;
+      }
+      .custom-panel h2,
+      .mastery-panel h2 {
+        font-size: 1.2rem;
+        margin-top: 0;
+      }
+      label,
+      input,
+      select {
+        margin: 10px 0;
+        display: block;
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      button {
+        padding: 10px 15px;
+      }
+      .operation-list {
+        border: 0;
+        margin: 0 0 15px;
+        padding: 0;
+      }
+      .operation-list legend {
+        margin: 10px 0;
+      }
+      #operation {
+        display: none;
+      }
+      .operation-choice {
+        align-items: center;
+        display: flex;
+        gap: 8px;
+        margin: 6px 0;
+      }
+      .operation-choice input {
+        display: inline-block;
+        margin: 0;
+      }
+      .works-panel {
+        border: 1px solid #cccccc;
+        margin-top: 10px;
+        padding: 10px;
+        width: fit-content;
+      }
+      .works-choice {
+        align-items: center;
+        display: flex;
+        gap: 8px;
+        margin: 0;
+      }
+      .works-choice input {
+        margin: 0;
+      }
+      #status {
+        min-height: 1.2em;
+        margin-top: 12px;
+        text-align: center;
+      }
+      @media (max-width: 720px) {
+        .builder-layout {
+          grid-template-columns: 1fr;
+        }
+        .mastery-panel {
+          border-left: 0;
+          border-top: 1px solid #777777;
+          padding-left: 0;
+          padding-top: 24px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Math Worksheet Generator</h1>
+
+    <div class="builder-layout">
+      <section class="custom-panel">
+        <h2>Build your custom worksheet</h2>
+
+    <div class="form-group">
+      <label for="worksheetTitle">Worksheet Title:</label>
+      <input
+        type="text"
+        id="worksheetTitle"
+        placeholder="e.g. Addition Practice - Level 1"
+      />
+    </div>
+
+    <div class="form-group">
+      <label id="operationLabel" for="operation">Select Operation:</label>
+      <select id="operation">
+        <option value="+">Addition (+)</option>
+        <option value="-">Subtraction (-)</option>
+        <option value="*">Multiplication (×)</option>
+        <option value="/">Division (÷)</option>
+      </select>
+      <div class="operation-radio-list" aria-labelledby="operationLabel">
+        <label class="operation-choice">
+          <input type="radio" name="operationChoice" value="+" checked />
+          Addition (+)
+        </label>
+        <label class="operation-choice">
+          <input type="radio" name="operationChoice" value="-" />
+          Subtraction (-)
+        </label>
+        <label class="operation-choice">
+          <input type="radio" name="operationChoice" value="*" />
+          Multiplication (&times;)
+        </label>
+        <label class="operation-choice">
+          <input type="radio" name="operationChoice" value="/" />
+          Division (&divide;)
+        </label>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label id="topRangeLabel">Top Number Range:</label>
+      <input type="number" id="topMin" placeholder="Minimum" />
+      <input type="number" id="topMax" placeholder="Maximum" />
+    </div>
+
+    <div class="form-group">
+      <label id="bottomRangeLabel">Bottom Number Range:</label>
+      <input type="number" id="bottomMin" placeholder="Minimum" />
+      <input type="number" id="bottomMax" placeholder="Maximum" />
+    </div>
+
+        <button type="button" onclick="generatePDF()">Generate Worksheet</button>
+      </section>
+
+      <section class="mastery-panel">
+        <h2>Master Your Math Facts</h2>
+
+        <div class="form-group">
+          <div id="masteryOperationLabel">Select Operation:</div>
+          <div
+            class="operation-radio-list"
+            aria-labelledby="masteryOperationLabel"
+          >
+            <label class="operation-choice">
+              <input type="radio" name="masteryOperationChoice" value="+" />
+              Addition (+)
+            </label>
+            <label class="operation-choice">
+              <input type="radio" name="masteryOperationChoice" value="-" />
+              Subtraction (-)
+            </label>
+            <label class="operation-choice">
+              <input type="radio" name="masteryOperationChoice" value="*" />
+              Multiplication (&times;)
+            </label>
+            <label class="operation-choice">
+              <input type="radio" name="masteryOperationChoice" value="/" checked />
+              Division (&divide;)
+            </label>
+          </div>
+        </div>
+
+        <button type="button" onclick="toggleWorksOptions()">
+          Build Mastery Packet
+        </button>
+        <div id="worksOptions" class="works-panel" hidden>
+          <div id="worksChoices"></div>
+        </div>
+      </section>
+    </div>
+    <p id="status" role="status" aria-live="polite"></p>
+
+    <script>
+      const DIVISION_RANGE_ERROR =
+        'error -  the numbers that you have entered do not go together.';
+
+      function setStatus(message, isError = false) {
+        const status = document.getElementById('status');
+        status.textContent = message;
+        status.style.color = isError ? '#b00020' : '#125f2e';
+      }
+
+      function getRandomNumber(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+      }
+
+      function getDivisionProblems(dividendMin, dividendMax, divisorMin, divisorMax) {
+        const validPairs = [];
+
+        for (let divisor = divisorMin; divisor <= divisorMax; divisor++) {
+          if (divisor === 0) {
+            continue;
+          }
+
+          const rawQuotientMin = Math.min(
+            dividendMin / divisor,
+            dividendMax / divisor
+          );
+          const rawQuotientMax = Math.max(
+            dividendMin / divisor,
+            dividendMax / divisor
+          );
+          const quotientMin = Math.max(0, Math.ceil(rawQuotientMin));
+          const quotientMax = Math.floor(rawQuotientMax);
+
+          for (let quotient = quotientMin; quotient <= quotientMax; quotient++) {
+            const dividend = divisor * quotient;
+
+            if (dividend >= dividendMin && dividend <= dividendMax) {
+              validPairs.push({ top: dividend, bottom: divisor });
+            }
+          }
+        }
+
+        if (validPairs.length === 0) {
+          throw new Error(DIVISION_RANGE_ERROR);
+        }
+
+        const problems = [];
+        for (let i = 0; i < 100; i++) {
+          problems.push(validPairs[getRandomNumber(0, validPairs.length - 1)]);
+        }
+
+        return problems;
+      }
+
+      function getProblemsFromChoices(topNumber, bottomChoices) {
+        return Array.from({ length: 100 }, () => ({
+          top: topNumber,
+          bottom: bottomChoices[getRandomNumber(0, bottomChoices.length - 1)],
+        }));
+      }
+
+      function getSubtractionProblems(minuendChoices, subtrahend) {
+        return Array.from({ length: 100 }, () => ({
+          top: minuendChoices[getRandomNumber(0, minuendChoices.length - 1)],
+          bottom: subtrahend,
+        }));
+      }
+
+      function getDivisionProblemsFromQuotients(divisor, quotientChoices) {
+        return Array.from({ length: 100 }, () => {
+          const quotient =
+            quotientChoices[getRandomNumber(0, quotientChoices.length - 1)];
+
+          return {
+            top: divisor * quotient,
+            bottom: divisor,
+          };
+        });
+      }
+
+      function getNumberRange(min, max) {
+        return Array.from({ length: max - min + 1 }, (_, index) => min + index);
+      }
+
+      function getBasicWorksPageChoices() {
+        return [
+          { choices: [0, 1, 2] },
+          { choices: [1, 2, 3] },
+          { choices: [2, 3, 4] },
+          { choices: [3, 4, 5] },
+          { choices: getNumberRange(0, 5), isTest: true },
+          { choices: [4, 5, 6] },
+          { choices: [5, 6, 7] },
+          { choices: getNumberRange(0, 7), isTest: true },
+          { choices: [7, 8, 9] },
+          { choices: [8, 9] },
+          { choices: getNumberRange(0, 9), isTest: true },
+        ];
+      }
+
+      function getAdditionWorksPages(topNumber) {
+        const pageChoices = getBasicWorksPageChoices();
+
+        return pageChoices.map(({ choices, isTest }) => {
+          const testStart = '+0';
+          const testEnd = `+${choices[choices.length - 1]}`;
+
+          return {
+            operation: '+',
+            title: isTest
+              ? `+${topNumber} Test (${testStart} through ${testEnd})`
+              : `${choices.join(', ')} + ${topNumber}`,
+            problems: getProblemsFromChoices(topNumber, choices),
+          };
+        });
+      }
+
+      function getMultiplicationWorksPages(topNumber) {
+        const pageChoices = getBasicWorksPageChoices();
+
+        return pageChoices.map(({ choices, isTest }) => {
+          const testStart = 'x0';
+          const testEnd = `x${choices[choices.length - 1]}`;
+
+          return {
+            operation: '*',
+            title: isTest
+              ? `x${topNumber} Test (${testStart} through ${testEnd})`
+              : `${choices.join(', ')} x ${topNumber}`,
+            problems: getProblemsFromChoices(topNumber, choices),
+          };
+        });
+      }
+
+      function getDivisionWorksPages(divisor) {
+        const pageChoices = getBasicWorksPageChoices();
+
+        return pageChoices.map(({ choices, isTest }) => ({
+          operation: '/',
+          title: isTest
+            ? `Divide by ${divisor} Test (${choices[0]} through ${
+                choices[choices.length - 1]
+              })`
+            : `Divide by ${divisor}: ${choices.join(', ')}`,
+          problems: getDivisionProblemsFromQuotients(divisor, choices),
+        }));
+      }
+
+      function getSubtractionWorksPages(subtrahend) {
+        const pageChoices = [
+          { choices: getNumberRange(subtrahend, subtrahend + 2) },
+          { choices: getNumberRange(subtrahend + 1, subtrahend + 3) },
+          { choices: getNumberRange(subtrahend + 2, subtrahend + 4) },
+          { choices: getNumberRange(subtrahend, subtrahend + 4), isTest: true },
+          { choices: getNumberRange(subtrahend + 3, subtrahend + 5) },
+          { choices: getNumberRange(subtrahend + 4, subtrahend + 6) },
+          { choices: getNumberRange(subtrahend + 5, subtrahend + 7) },
+          { choices: getNumberRange(subtrahend, subtrahend + 7), isTest: true },
+          { choices: getNumberRange(subtrahend + 6, subtrahend + 8) },
+          { choices: getNumberRange(subtrahend + 7, subtrahend + 9) },
+          { choices: getNumberRange(subtrahend, subtrahend + 9), isTest: true },
+        ];
+
+        return pageChoices.map(({ choices, isTest }) => ({
+          operation: '-',
+          title: isTest
+            ? `-${subtrahend} Review Test (${choices[0]} through ${
+                choices[choices.length - 1]
+              })`
+            : `${choices.join(', ')} - ${subtrahend}`,
+          problems: getSubtractionProblems(choices, subtrahend),
+        }));
+      }
+
+      function getTheWorksPages(operation, number) {
+        if (operation === '-') {
+          return getSubtractionWorksPages(number);
+        }
+
+        if (operation === '*') {
+          return getMultiplicationWorksPages(number);
+        }
+
+        if (operation === '/') {
+          return getDivisionWorksPages(number);
+        }
+
+        return getAdditionWorksPages(number);
+      }
+
+      function getWorksLabel(operation, number) {
+        if (operation === '*') {
+          return `x${number}`;
+        }
+
+        if (operation === '/') {
+          return `&divide;${number}`;
+        }
+
+        return `${operation}${number}`;
+      }
+
+      function getSelectedCustomOperation() {
+        const selectedOperation = document.querySelector(
+          'input[name="operationChoice"]:checked'
+        );
+
+        return selectedOperation
+          ? selectedOperation.value
+          : document.getElementById('operation').value;
+      }
+
+      function getSelectedMasteryOperation() {
+        const selectedOperation = document.querySelector(
+          'input[name="masteryOperationChoice"]:checked'
+        );
+
+        return selectedOperation
+          ? selectedOperation.value
+          : getSelectedCustomOperation();
+      }
+
+      function renderWorksOptions() {
+        const operation = getSelectedMasteryOperation();
+        const worksChoices = document.getElementById('worksChoices');
+
+        if (
+          operation !== '+' &&
+          operation !== '-' &&
+          operation !== '*' &&
+          operation !== '/'
+        ) {
+          worksChoices.innerHTML = '';
+          return;
+        }
+
+        const numbers = getNumberRange(2, 9);
+
+        worksChoices.innerHTML = numbers
+          .map(
+            (number) => `
+              <label class="works-choice">
+                <input
+                  type="radio"
+                  name="worksSet"
+                  value="${getWorksLabel(operation, number)}"
+                  onclick="generateTheWorks('${operation}', ${number})"
+                />
+                ${getWorksLabel(operation, number)}
+              </label>
+            `
+          )
+          .join('');
+      }
+
+      function toggleWorksOptions() {
+        const worksOptions = document.getElementById('worksOptions');
+        const willShow = worksOptions.hidden;
+
+        if (willShow) {
+          renderWorksOptions();
+        }
+
+        worksOptions.hidden = !willShow;
+      }
+
+      function generateTheWorks(operation, topNumber) {
+        try {
+          setStatus('');
+          const pages = getTheWorksPages(operation, topNumber);
+          const fileOperation =
+            operation === '*' ? 'x' : operation === '/' ? 'div' : operation;
+
+          generatePDFPages(
+            pages,
+            `Mastery Packet ${fileOperation}${topNumber}.pdf`
+          );
+
+          setStatus('Mastery packet generated. Check your downloads.');
+        } catch (error) {
+          console.error(error);
+          setStatus(error.message, true);
+          alert(error.message);
+        }
+      }
+
+      function updateRangeLabels() {
+        const isDivision = getSelectedCustomOperation() === '/';
+        document.getElementById('topRangeLabel').textContent = isDivision
+          ? 'Dividend Range - Inside the House'
+          : 'Top Number Range:';
+        document.getElementById('bottomRangeLabel').textContent = isDivision
+          ? 'Divisor Range - Outside the House'
+          : 'Bottom Number Range:';
+        renderWorksOptions();
+      }
+
+      document
+        .getElementById('operation')
+        .addEventListener('change', updateRangeLabels);
+      document
+        .querySelectorAll('input[name="operationChoice"]')
+        .forEach((operationChoice) => {
+          operationChoice.addEventListener('change', updateRangeLabels);
+        });
+      document
+        .querySelectorAll('input[name="masteryOperationChoice"]')
+        .forEach((operationChoice) => {
+          operationChoice.addEventListener('change', renderWorksOptions);
+        });
+      updateRangeLabels();
+
+      async function generatePDF() {
+        try {
+          setStatus('');
+
+          const operation = getSelectedCustomOperation();
+          const topMin = parseInt(document.getElementById('topMin').value);
+          const topMax = parseInt(document.getElementById('topMax').value);
+          const bottomMin = parseInt(document.getElementById('bottomMin').value);
+          const bottomMax = parseInt(
+            document.getElementById('bottomMax').value
+          );
+
+          if (
+            isNaN(topMin) ||
+            isNaN(topMax) ||
+            isNaN(bottomMin) ||
+            isNaN(bottomMax)
+          ) {
+            throw new Error('Please fill in all number fields.');
+          }
+
+          if (topMin > topMax || bottomMin > bottomMax) {
+            throw new Error(
+              'Minimum values must be less than or equal to maximum values.'
+            );
+          }
+
+          const problems =
+            operation === '/'
+              ? getDivisionProblems(topMin, topMax, bottomMin, bottomMax)
+              : Array.from({ length: 100 }, () => ({
+                  top: getRandomNumber(topMin, topMax),
+                  bottom: getRandomNumber(bottomMin, bottomMax),
+                }));
+          const title =
+            document.getElementById('worksheetTitle').value.trim() ||
+            'Math Worksheet';
+
+          generatePDFFile(problems, operation, title, 'math_worksheet.pdf');
+
+          setStatus('Worksheet generated. Check your downloads.');
+        } catch (error) {
+          console.error(error);
+          setStatus(error.message, true);
+          alert(error.message);
+        }
+      }
+
+      function getPDFPageContent(problems, operation, title = 'Math Worksheet') {
+        const pageWidth = 612;
+        const pageHeight = 792;
+        const margin = 36;
+        const columns = 10;
+        const rows = Math.ceil(problems.length / columns);
+        const headerY = 42;
+        const headerFontSize = 12;
+        const colWidth = (pageWidth - margin * 2) / columns;
+        const startY = 82;
+        const rowHeight = (pageHeight - margin - startY) / rows;
+        const fontSize = 14;
+        const commands = ['0 0 0 RG', '0 0 0 rg', '1 w'];
+
+        function textWidth(value, size = fontSize) {
+          return String(value).length * size * 0.56;
+        }
+
+        function cleanNumber(value) {
+          return String(value).replace(/[^\x20-\x7E]/g, '');
+        }
+
+        function escapePDFText(value) {
+          return cleanNumber(value).replace(/[\\()]/g, '\\$&');
+        }
+
+        function format(value) {
+          return Number(value).toFixed(2);
+        }
+
+        function addText(value, x, topY, size = fontSize) {
+          const y = pageHeight - topY;
+          commands.push(
+            `BT /F1 ${format(size)} Tf ${format(x)} ${format(
+              y
+            )} Td (${escapePDFText(value)}) Tj ET`
+          );
+        }
+
+        function addLine(x1, topY1, x2, topY2) {
+          commands.push(
+            `${format(x1)} ${format(pageHeight - topY1)} m ${format(
+              x2
+            )} ${format(pageHeight - topY2)} l S`
+          );
+        }
+
+        function addDivisionHouse(leftX, topY, rightX, bottomY) {
+          const hookX = leftX - 9;
+          const curveMidY = topY + (bottomY - topY) * 0.58;
+
+          commands.push(
+            `${format(hookX)} ${format(pageHeight - bottomY)} m ${format(
+              leftX - 2
+            )} ${format(pageHeight - (bottomY - 7))} ${format(
+              leftX - 2
+            )} ${format(pageHeight - curveMidY)} ${format(leftX)} ${format(
+              pageHeight - topY
+            )} c ${format(rightX)} ${format(pageHeight - topY)} l S`
+          );
+        }
+
+        const nameLabel = 'Name:';
+        const nameX = margin;
+        const nameLineStartX = nameX + textWidth(nameLabel, headerFontSize) + 5;
+        const nameLineEndX = margin + 220;
+        const titleX = pageWidth - margin - textWidth(title, headerFontSize);
+
+        addText(nameLabel, nameX, headerY, headerFontSize);
+        addLine(nameLineStartX, headerY + 3, nameLineEndX, headerY + 3);
+        addText(title, Math.max(nameLineEndX + 20, titleX), headerY, headerFontSize);
+
+        problems.forEach(({ top, bottom }, i) => {
+          const col = i % columns;
+          const row = Math.floor(i / columns);
+          const cellX = margin + col * colWidth;
+          const cellY = startY + row * rowHeight;
+          const topStr = cleanNumber(top);
+          const bottomStr = cleanNumber(bottom);
+
+          if (operation === '/') {
+            const divisorWidth = textWidth(bottomStr);
+            const dividendWidth = textWidth(topStr);
+            const divisorX = cellX + 7;
+            const baselineY = cellY + 30;
+            const houseX = divisorX + divisorWidth + 7;
+            const dividendX = houseX + 3;
+            const houseTopY = baselineY - 16;
+
+            addText(bottomStr, divisorX, baselineY);
+            addText(topStr, dividendX, baselineY);
+            addDivisionHouse(
+              houseX,
+              houseTopY,
+              dividendX + dividendWidth + 4,
+              baselineY + 10
+            );
+          } else {
+            const operationText = operation === '*' ? 'x' : operation;
+            const numberRightX = cellX + colWidth - 8;
+            const topX = numberRightX - textWidth(topStr);
+            const bottomX = numberRightX - textWidth(bottomStr);
+            const operationX = bottomX - textWidth(operationText + ' ');
+            const lineStartX = Math.min(operationX, topX, bottomX);
+
+            addText(topStr, topX, cellY + 10);
+            addText(operationText, operationX, cellY + 28);
+            addText(bottomStr, bottomX, cellY + 28);
+            addLine(lineStartX, cellY + 34, numberRightX, cellY + 34);
+          }
+        });
+
+        return commands.join('\n');
+      }
+
+      function generatePDFFile(problems, operation, title, fileName) {
+        generatePDFPages([{ problems, operation, title }], fileName);
+      }
+
+      function generatePDFPages(pages, fileName) {
+        const pageWidth = 612;
+        const pageHeight = 792;
+        const pageContents = pages.map(({ problems, operation, title }) =>
+          getPDFPageContent(problems, operation, title)
+        );
+
+        downloadPDF(pageContents, pageWidth, pageHeight, fileName);
+      }
+
+      function downloadPDF(pageContents, pageWidth, pageHeight, fileName) {
+        const encoder = new TextEncoder();
+        const contents = Array.isArray(pageContents) ? pageContents : [pageContents];
+        const pageObjectNumbers = contents.map((_, index) => 3 + index);
+        const fontObjectNumber = 3 + contents.length;
+        const firstContentObjectNumber = fontObjectNumber + 1;
+        const objects = [
+          '<< /Type /Catalog /Pages 2 0 R >>',
+          `<< /Type /Pages /Kids [${pageObjectNumbers
+            .map((pageNumber) => `${pageNumber} 0 R`)
+            .join(' ')}] /Count ${contents.length} >>`,
+        ];
+
+        contents.forEach((_, index) => {
+          objects.push(
+            `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 ${fontObjectNumber} 0 R >> >> /Contents ${
+              firstContentObjectNumber + index
+            } 0 R >>`
+          );
+        });
+
+        objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
+
+        contents.forEach((content) => {
+          objects.push(
+            `<< /Length ${encoder.encode(content).length} >>\nstream\n${content}\nendstream`
+          );
+        });
+
+        let pdf = '%PDF-1.4\n';
+        const offsets = [0];
+
+        objects.forEach((object, index) => {
+          offsets.push(encoder.encode(pdf).length);
+          pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+        });
+
+        const xrefOffset = encoder.encode(pdf).length;
+        pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+
+        for (let i = 1; i < offsets.length; i++) {
+          pdf += `${offsets[i].toString().padStart(10, '0')} 00000 n \n`;
+        }
+
+        pdf += `trailer\n<< /Size ${
+          objects.length + 1
+        } /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+
+        const blob = new Blob([pdf], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+    </script>
+  </body>
+</html>
