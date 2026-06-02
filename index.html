@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -29,7 +30,13 @@
       .custom-panel h2,
       .mastery-panel h2 {
         font-size: 1.2rem;
+        margin-bottom: 4px;
         margin-top: 0;
+      }
+      .section-note {
+        color: #c00000;
+        font-weight: 700;
+        margin: 0 0 16px;
       }
       label,
       input,
@@ -103,6 +110,7 @@
     <div class="builder-layout">
       <section class="custom-panel">
         <h2>Build your custom worksheet</h2>
+        <p class="section-note">(Creates ONE Worksheet)</p>
 
     <div class="form-group">
       <label for="worksheetTitle">Worksheet Title:</label>
@@ -158,6 +166,7 @@
 
       <section class="mastery-panel">
         <h2>Master Your Math Facts</h2>
+        <p class="section-note">(Creates ELEVEN Worksheets)</p>
 
         <div class="form-group">
           <div id="masteryOperationLabel">Select Operation:</div>
@@ -469,7 +478,8 @@
 
           generatePDFPages(
             pages,
-            `Mastery Packet ${fileOperation}${topNumber}.pdf`
+            `Mastery Packet ${fileOperation}${topNumber}.pdf`,
+            true
           );
 
           setStatus('Mastery packet generated. Check your downloads.');
@@ -554,7 +564,12 @@
         }
       }
 
-      function getPDFPageContent(problems, operation, title = 'Math Worksheet') {
+      function getPDFPageContent(
+        problems,
+        operation,
+        title = 'Math Worksheet',
+        includeMasteryNote = false
+      ) {
         const pageWidth = 612;
         const pageHeight = 792;
         const margin = 36;
@@ -562,8 +577,9 @@
         const rows = Math.ceil(problems.length / columns);
         const headerY = 42;
         const headerFontSize = 12;
+        const noteFontSize = 8.5;
         const colWidth = (pageWidth - margin * 2) / columns;
-        const startY = 82;
+        const startY = includeMasteryNote ? 102 : 82;
         const rowHeight = (pageHeight - margin - startY) / rows;
         const fontSize = 14;
         const commands = ['0 0 0 RG', '0 0 0 rg', '1 w'];
@@ -617,14 +633,31 @@
         }
 
         const nameLabel = 'Name:';
+        const timeLabel = 'Time:';
+        const masteryNote =
+          '(if two rows are completed under 1 minute, the whole paper can be considered "mastered")';
         const nameX = margin;
         const nameLineStartX = nameX + textWidth(nameLabel, headerFontSize) + 5;
-        const nameLineEndX = margin + 220;
+        const nameLineEndX = margin + 194;
+        const timeX = nameLineEndX + 20;
+        const timeLineStartX = timeX + textWidth(timeLabel, headerFontSize) + 5;
+        const timeLineEndX = timeX + 100;
         const titleX = pageWidth - margin - textWidth(title, headerFontSize);
 
         addText(nameLabel, nameX, headerY, headerFontSize);
         addLine(nameLineStartX, headerY + 3, nameLineEndX, headerY + 3);
-        addText(title, Math.max(nameLineEndX + 20, titleX), headerY, headerFontSize);
+        addText(timeLabel, timeX, headerY, headerFontSize);
+        addLine(timeLineStartX, headerY + 3, timeLineEndX, headerY + 3);
+        addText(
+          title,
+          Math.max(timeLineEndX + 20, titleX),
+          headerY,
+          headerFontSize
+        );
+
+        if (includeMasteryNote) {
+          addText(masteryNote, nameX, headerY + 18, noteFontSize);
+        }
 
         problems.forEach(({ top, bottom }, i) => {
           const col = i % columns;
@@ -673,11 +706,11 @@
         generatePDFPages([{ problems, operation, title }], fileName);
       }
 
-      function generatePDFPages(pages, fileName) {
+      function generatePDFPages(pages, fileName, includeMasteryNote = false) {
         const pageWidth = 612;
         const pageHeight = 792;
         const pageContents = pages.map(({ problems, operation, title }) =>
-          getPDFPageContent(problems, operation, title)
+          getPDFPageContent(problems, operation, title, includeMasteryNote)
         );
 
         downloadPDF(pageContents, pageWidth, pageHeight, fileName);
