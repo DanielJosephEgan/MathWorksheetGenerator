@@ -206,6 +206,8 @@
     <script>
       const DIVISION_RANGE_ERROR =
         'error -  the numbers that you have entered do not go together.';
+      const SUBTRACTION_RANGE_ERROR =
+        'error - the subtraction ranges must allow the top number to be larger than or equal to the bottom number.';
 
       function setStatus(message, isError = false) {
         const status = document.getElementById('status');
@@ -269,6 +271,31 @@
           top: minuendChoices[getRandomNumber(0, minuendChoices.length - 1)],
           bottom: subtrahend,
         }));
+      }
+
+      function getSubtractionProblemsFromRanges(
+        topMin,
+        topMax,
+        bottomMin,
+        bottomMax
+      ) {
+        const validPairs = [];
+
+        for (let top = topMin; top <= topMax; top++) {
+          for (let bottom = bottomMin; bottom <= bottomMax; bottom++) {
+            if (top >= bottom) {
+              validPairs.push({ top, bottom });
+            }
+          }
+        }
+
+        if (validPairs.length === 0) {
+          throw new Error(SUBTRACTION_RANGE_ERROR);
+        }
+
+        return Array.from({ length: 100 }, () =>
+          validPairs[getRandomNumber(0, validPairs.length - 1)]
+        );
       }
 
       function getDivisionProblemsFromQuotients(divisor, quotientChoices) {
@@ -543,13 +570,28 @@
             );
           }
 
-          const problems =
-            operation === '/'
-              ? getDivisionProblems(topMin, topMax, bottomMin, bottomMax)
-              : Array.from({ length: 100 }, () => ({
-                  top: getRandomNumber(topMin, topMax),
-                  bottom: getRandomNumber(bottomMin, bottomMax),
-                }));
+          let problems;
+
+          if (operation === '/') {
+            problems = getDivisionProblems(
+              topMin,
+              topMax,
+              bottomMin,
+              bottomMax
+            );
+          } else if (operation === '-') {
+            problems = getSubtractionProblemsFromRanges(
+              topMin,
+              topMax,
+              bottomMin,
+              bottomMax
+            );
+          } else {
+            problems = Array.from({ length: 100 }, () => ({
+              top: getRandomNumber(topMin, topMax),
+              bottom: getRandomNumber(bottomMin, bottomMax),
+            }));
+          }
           const title =
             document.getElementById('worksheetTitle').value.trim() ||
             'Math Worksheet';
