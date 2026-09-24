@@ -207,7 +207,44 @@
         </div>
         <section class="rolling-mastery" aria-labelledby="rollingMasteryTitle">
           <h2 id="rollingMasteryTitle">Rolling Mastery</h2>
-          <p class="section-note">(Creates one worksheet per number that slowly rolls through the facts)</p>
+          <p class="section-note">(Creates ONE worksheet per number that slowly rolls through the facts)</p>
+          <div class="form-group">
+            <div id="rollingOperationLabel">Select Operation:</div>
+            <div
+              class="operation-radio-list"
+              role="radiogroup"
+              aria-labelledby="rollingOperationLabel"
+            >
+              <label class="operation-choice">
+                <input type="radio" name="rollingOperationChoice" value="+" checked />
+                Addition (+)
+              </label>
+              <label class="operation-choice">
+                <input type="radio" name="rollingOperationChoice" value="-" />
+                Subtraction (-)
+              </label>
+              <label class="operation-choice">
+                <input type="radio" name="rollingOperationChoice" value="*" />
+                Multiplication (&times;)
+              </label>
+              <label class="operation-choice">
+                <input type="radio" name="rollingOperationChoice" value="/" />
+                Division (&divide;)
+              </label>
+            </div>
+          </div>
+          <button
+            type="button"
+            id="buildRollingWorksheet"
+            onclick="toggleRollingOptions()"
+            aria-controls="rollingOptions"
+            aria-expanded="false"
+          >
+            Build Rolling Worksheet
+          </button>
+          <div id="rollingOptions" class="works-panel" hidden>
+            <div id="rollingChoices" role="radiogroup" aria-label="Rolling worksheet number"></div>
+          </div>
         </section>
       </section>
     </div>
@@ -527,6 +564,149 @@
         }
       }
 
+      function getSelectedRollingOperation() {
+        const selectedOperation = document.querySelector(
+          'input[name="rollingOperationChoice"]:checked'
+        );
+        return selectedOperation ? selectedOperation.value : '+';
+      }
+
+      function renderRollingOptions() {
+        const operation = getSelectedRollingOperation();
+        const symbol = operation === '*' ? '&times;' : operation === '/' ? '&divide;' : operation;
+        const operationName = { '+': 'addition', '-': 'subtraction', '*': 'multiplication', '/': 'division' }[operation];
+        const choices = document.getElementById('rollingChoices');
+        choices.setAttribute(
+          'aria-label',
+          `Rolling ${operationName} number`
+        );
+        choices.innerHTML = getNumberRange(1, 9)
+          .map(
+            (number) => `
+              <label class="works-choice">
+                <input
+                  type="radio"
+                  name="rollingSet"
+                  value="${number}"
+                  onclick="generateRollingWorksheet(${number})"
+                />
+                ${symbol}${number}
+              </label>
+            `
+          )
+          .join('');
+      }
+
+      function resetRollingOptions() {
+        document.getElementById('rollingOptions').hidden = true;
+        document.getElementById('rollingChoices').innerHTML = '';
+        document.getElementById('buildRollingWorksheet').setAttribute('aria-expanded', 'false');
+      }
+
+      function toggleRollingOptions() {
+        setStatus('');
+        const operation = getSelectedRollingOperation();
+        if (!['+', '-', '*', '/'].includes(operation)) {
+          resetRollingOptions();
+          setStatus('Please select a valid operation.', true);
+          return;
+        }
+
+        const options = document.getElementById('rollingOptions');
+        const willShow = options.hidden;
+        if (willShow) {
+          renderRollingOptions();
+        }
+        options.hidden = !willShow;
+        document.getElementById('buildRollingWorksheet').setAttribute('aria-expanded', String(willShow));
+      }
+
+      function shuffleRollingValues(values) {
+        const shuffled = values.slice();
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = getRandomNumber(0, i);
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
+      }
+
+      function getRollingFactProblems(number, operation = '+') {
+        if (!Number.isInteger(number) || number < 1 || number > 9) {
+          throw new Error('Please select a number from 1 through 9.');
+        }
+        const isSubtraction = operation === '-';
+        const isDivision = operation === '/';
+
+        function makeProblem(value, swap = false) {
+          if (isSubtraction) {
+            return { top: number + value, bottom: number };
+          }
+          if (isDivision) {
+            return { top: number * value, bottom: number };
+          }
+          return swap
+            ? { top: value, bottom: number }
+            : { top: number, bottom: value };
+        }
+
+        function practice(start) {
+          return [0, 0, 1, 0, 1, 1, 2, 1, 2, 2].map((offset) =>
+            makeProblem(start + offset)
+          );
+        }
+
+        function review(maximum, mixPositions = false) {
+          const choices = getNumberRange(isSubtraction || isDivision ? 0 : 1, maximum);
+          const values = [];
+          // Complete passes keep every review fact present before filling the row.
+          while (values.length < 10) {
+            values.push(...shuffleRollingValues(choices).slice(0, 10 - values.length));
+          }
+          const swaps = mixPositions && !isSubtraction && !isDivision
+            ? shuffleRollingValues([true, true, true, true, true, false, false, false, false, false])
+            : [];
+          return shuffleRollingValues(values).map((value, index) =>
+            makeProblem(value, swaps[index])
+          );
+        }
+
+        return [
+          practice(1),
+          practice(2),
+          review(4),
+          practice(3),
+          practice(5),
+          review(7),
+          practice(7),
+          [8, 8, 9, 8, 9, 9, 8, 9, 8, 9].map((value) => makeProblem(value)),
+          review(9, true),
+          review(9, true),
+        ].flat();
+      }
+
+      function generateRollingWorksheet(number) {
+        try {
+          setStatus('');
+          const operation = getSelectedRollingOperation();
+          if (!['+', '-', '*', '/'].includes(operation)) {
+            throw new Error('Please select a valid operation.');
+          }
+          const label = operation === '/' ? `Divide by ${number}` : getWorksLabel(operation, number);
+          const fileLabel = operation === '/' ? `div${number}` : label;
+          generatePDFFile(
+            getRollingFactProblems(number, operation),
+            operation,
+            `Rolling Mastery ${label}`,
+            `Rolling Mastery ${fileLabel}.pdf`
+          );
+          setStatus('Rolling worksheet generated. Check your downloads.');
+        } catch (error) {
+          console.error(error);
+          setStatus(error.message, true);
+          alert(error.message);
+        }
+      }
+
       function updateRangeLabels() {
         const isDivision = getSelectedCustomOperation() === '/';
         document.getElementById('topRangeLabel').textContent = isDivision
@@ -550,6 +730,14 @@
         .querySelectorAll('input[name="masteryOperationChoice"]')
         .forEach((operationChoice) => {
           operationChoice.addEventListener('change', renderWorksOptions);
+        });
+      document
+        .querySelectorAll('input[name="rollingOperationChoice"]')
+        .forEach((operationChoice) => {
+          operationChoice.addEventListener('change', () => {
+            resetRollingOptions();
+            setStatus('');
+          });
         });
       updateRangeLabels();
 
